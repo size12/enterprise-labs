@@ -1,0 +1,28 @@
+### Создать клиента
+POST http://localhost:8080/api/customers
+Content-Type: application/json
+
+{
+  "firstName": "Ivan",
+  "lastName": "Ivanov",
+  "email": "ivan@example.com"
+}
+
+### Получить всех клиентов
+GET http://localhost:8080/api/customers
+
+### Получить клиента по ID
+GET http://localhost:8080/api/customers/1
+
+### Обновить клиента
+PUT http://localhost:8080/api/customers/1
+Content-Type: application/json
+
+{
+  "firstName": "Ivan Updated",
+  "lastName": "Ivanov Updated",
+  "email": "ivan.updated@example.com"
+}
+
+### Удалить клиента
+DELETE http://localhost:8080/api/customers/1
