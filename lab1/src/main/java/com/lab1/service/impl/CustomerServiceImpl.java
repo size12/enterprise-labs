@@ -3,9 +3,12 @@ package com.lab1.service.impl;
 import com.lab1.dto.CustomerDto;
 import com.lab1.entity.Customer;
 import com.lab1.exception.CustomerNotFoundException;
+import com.lab1.jms.CustomerEventPublisher;
+import com.lab1.jms.NotificationProducer;
 import com.lab1.repository.CustomerRepository;
 import com.lab1.service.CustomerService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -14,14 +17,14 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CustomerServiceImpl implements CustomerService {
 
     private final CustomerRepository repository;
+    private final NotificationProducer notificationProducer;
+    private final CustomerEventPublisher eventPublisher;
 
     private CustomerDto mapToDto(Customer customer) {
         return CustomerDto.builder()
@@ -44,8 +47,25 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @CacheEvict(value = {"customers", "allCustomers"}, allEntries = true)
+    @Transactional
     public CustomerDto create(CustomerDto dto) {
+        log.info("Создание нового клиента: {}", dto.getEmail());
+
+        // 1. Сохраняем клиента в БД (синхронно)
         Customer customer = repository.save(mapToEntity(dto));
+
+        // 2. Асинхронно отправляем приветственное письмо
+        //    Метод возвращает управление немедленно, отправка в очереди
+        notificationProducer.sendWelcomeEmail(
+            customer.getId(),
+            customer.getEmail(),
+            customer.getFirstName()
+        );
+
+        // 3. Публикуем событие о создании клиента (для аудит и аналитики)
+        eventPublisher.publishCustomerCreated(customer.getId(), customer.getEmail());
+
+        log.info("Клиент создан с ID: {}", customer.getId());
         return mapToDto(customer);
     }
 
@@ -88,6 +108,7 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @CacheEvict(value = {"customers", "allCustomers"}, allEntries = true)
+    @Transactional
     public CustomerDto update(Long id, CustomerDto dto) {
         Customer customer = repository.findById(id)
                 .orElseThrow(() -> new CustomerNotFoundException(id));
@@ -96,12 +117,28 @@ public class CustomerServiceImpl implements CustomerService {
         customer.setLastName(dto.getLastName());
         customer.setEmail(dto.getEmail());
 
-        return mapToDto(repository.save(customer));
+        Customer updatedCustomer = repository.save(customer);
+
+        // Публикуем событие об обновлении клиента
+        eventPublisher.publishCustomerUpdated(updatedCustomer.getId(), updatedCustomer.getEmail());
+
+        log.info("Клиент обновлён с ID: {}", updatedCustomer.getId());
+        return mapToDto(updatedCustomer);
     }
 
     @Override
     @CacheEvict(value = {"customers", "allCustomers"}, allEntries = true)
+    @Transactional
     public void delete(Long id) {
+        Customer customer = repository.findById(id)
+                .orElseThrow(() -> new CustomerNotFoundException(id));
+        
+        String email = customer.getEmail();
         repository.deleteById(id);
+
+        // Публикуем событие об удалении клиента
+        eventPublisher.publishCustomerDeleted(id, email);
+
+        log.info("Клиент удалён с ID: {}", id);
     }
 }

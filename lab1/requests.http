@@ -89,6 +89,36 @@ DELETE http://localhost:8080/api/v1/customers/1
 Authorization: Bearer YOUR_ADMIN_TOKEN_HERE
 
 ### ==========================================
+### ASYNC JMS ENDPOINTS (Lab 3)
+### ==========================================
+
+### Create customer with async email notification (ADMIN only)
+# After creation, welcome email will be sent asynchronously via JMS
+POST http://localhost:8080/api/v1/customers
+Content-Type: application/json
+Authorization: Bearer YOUR_ADMIN_TOKEN_HERE
+
+{
+  "firstName": "Async",
+  "lastName": "User",
+  "email": "async.user@example.com"
+}
+
+### Generate customer report asynchronously (ADMIN only)
+# Request is queued and processed in background
+# Returns 202 Accepted with requestId
+POST http://localhost:8080/api/v1/customers/reports/generate?type=customer-list&format=PDF
+Authorization: Bearer YOUR_ADMIN_TOKEN_HERE
+
+### Generate report in CSV format
+POST http://localhost:8080/api/v1/customers/reports/generate?type=customer-list&format=CSV
+Authorization: Bearer YOUR_ADMIN_TOKEN_HERE
+
+### Generate report with custom type
+POST http://localhost:8080/api/v1/customers/reports/generate?type=active-customers&format=PDF
+Authorization: Bearer YOUR_ADMIN_TOKEN_HERE
+
+### ==========================================
 ### TEST WITHOUT AUTHENTICATION (Should fail)
 ### ==========================================
 

@@ -13,5 +13,28 @@ spring:
         format_sql: true
     database-platform: org.hibernate.dialect.PostgreSQLDialect
 
+  # JMS/Artemis configuration
+  artemis:
+    mode: native
+    host: localhost
+    port: 61616
+    user: admin
+    password: admin
+  
+  # Настройки JMS
+  jms:
+    listener:
+      auto-startup: true
+      concurrency: 1
+      max-concurrency: 5
+
 server:
   port: 8080
+
+# Кастомные имена очередей и топиков
+app:
+  queue:
+    email: email.queue
+    report: report.queue
+  topic:
+    customer-events: customer.events.topic
