@@ -1,7 +1,10 @@
 package com.lab1.service;
 
-import java.util.List;
 import com.lab1.dto.CustomerDto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+import java.util.List;
 
 public interface CustomerService {
 
@@ -9,7 +12,9 @@ public interface CustomerService {
 
     CustomerDto getById(Long id);
 
-    List<CustomerDto> getAll();
+    Page<CustomerDto> getAll(Pageable pageable);
+
+    Page<CustomerDto> getAllFiltered(String firstName, String lastName, String email, Pageable pageable);
 
     CustomerDto update(Long id, CustomerDto dto);
 

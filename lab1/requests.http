@@ -1,6 +1,43 @@
-### Создать клиента
-POST http://localhost:8080/api/customers
+### ==========================================
+### AUTHENTICATION ENDPOINTS
+### ==========================================
+
+### Register a new user
+POST http://localhost:8080/api/auth/register
 Content-Type: application/json
+
+{
+  "username": "user1",
+  "password": "password123"
+}
+
+### Register an admin user
+POST http://localhost:8080/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "admin1",
+  "password": "password123"
+}
+
+### Login and get JWT token
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "user1",
+  "password": "password123"
+}
+
+### ==========================================
+### CUSTOMER API V1 (Requires Authentication)
+### ==========================================
+
+### Create a new customer (ADMIN only)
+# First, login as admin and use the token from response
+POST http://localhost:8080/api/v1/customers
+Content-Type: application/json
+Authorization: Bearer YOUR_ADMIN_TOKEN_HERE
 
 {
   "firstName": "Ivan",
@@ -8,15 +45,38 @@ Content-Type: application/json
   "email": "ivan@example.com"
 }
 
-### Получить всех клиентов
-GET http://localhost:8080/api/customers
+### Get all customers with pagination (USER or ADMIN)
+GET http://localhost:8080/api/v1/customers?page=0&size=10&sort=id,asc
+Authorization: Bearer YOUR_TOKEN_HERE
 
-### Получить клиента по ID
-GET http://localhost:8080/api/customers/1
+### Get all customers with custom sorting
+GET http://localhost:8080/api/v1/customers?page=0&size=5&sort=firstName,desc
+Authorization: Bearer YOUR_TOKEN_HERE
 
-### Обновить клиента
-PUT http://localhost:8080/api/customers/1
+### Filter customers by firstName
+GET http://localhost:8080/api/v1/customers?page=0&size=10&firstName=Ivan
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Filter customers by lastName
+GET http://localhost:8080/api/v1/customers?page=0&size=10&lastName=Ivanov
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Filter customers by email
+GET http://localhost:8080/api/v1/customers?page=0&size=10&email=@gmail.com
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Combined filtering with pagination and sorting
+GET http://localhost:8080/api/v1/customers?page=0&size=10&sort=lastName,asc&firstName=Ivan&lastName=Ivanov
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Get customer by ID (USER or ADMIN)
+GET http://localhost:8080/api/v1/customers/1
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Update a customer (ADMIN only)
+PUT http://localhost:8080/api/v1/customers/1
 Content-Type: application/json
+Authorization: Bearer YOUR_ADMIN_TOKEN_HERE
 
 {
   "firstName": "Ivan Updated",
@@ -24,5 +84,24 @@ Content-Type: application/json
   "email": "ivan.updated@example.com"
 }
 
-### Удалить клиента
-DELETE http://localhost:8080/api/customers/1
+### Delete a customer (ADMIN only)
+DELETE http://localhost:8080/api/v1/customers/1
+Authorization: Bearer YOUR_ADMIN_TOKEN_HERE
+
+### ==========================================
+### TEST WITHOUT AUTHENTICATION (Should fail)
+### ==========================================
+
+### This should return 401 Unauthorized
+GET http://localhost:8080/api/v1/customers
+
+### This should return 403 Forbidden (USER trying admin operation)
+POST http://localhost:8080/api/v1/customers
+Content-Type: application/json
+Authorization: Bearer YOUR_USER_TOKEN_HERE
+
+{
+  "firstName": "Test",
+  "lastName": "Testov",
+  "email": "test@example.com"
+}

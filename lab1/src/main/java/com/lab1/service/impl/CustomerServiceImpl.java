@@ -1,11 +1,18 @@
 package com.lab1.service.impl;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import com.lab1.service.CustomerService;
-import com.lab1.repository.CustomerRepository;
-import com.lab1.entity.Customer;
 import com.lab1.dto.CustomerDto;
+import com.lab1.entity.Customer;
+import com.lab1.exception.CustomerNotFoundException;
+import com.lab1.repository.CustomerRepository;
+import com.lab1.service.CustomerService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -36,30 +43,54 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
+    @CacheEvict(value = {"customers", "allCustomers"}, allEntries = true)
     public CustomerDto create(CustomerDto dto) {
         Customer customer = repository.save(mapToEntity(dto));
         return mapToDto(customer);
     }
 
     @Override
+    @Cacheable(value = "customers", key = "#id")
     public CustomerDto getById(Long id) {
         Customer customer = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Customer not found"));
+                .orElseThrow(() -> new CustomerNotFoundException(id));
         return mapToDto(customer);
     }
 
     @Override
-    public List<CustomerDto> getAll() {
-        return repository.findAll()
-                .stream()
-                .map(this::mapToDto)
-                .collect(Collectors.toList());
+    @Cacheable(value = "allCustomers", key = "#pageable.pageNumber + '-' + #pageable.pageSize + '-' + #pageable.sort.toString()")
+    public Page<CustomerDto> getAll(Pageable pageable) {
+        return repository.findAll(pageable)
+                .map(this::mapToDto);
     }
 
     @Override
+    public Page<CustomerDto> getAllFiltered(String firstName, String lastName, String email, Pageable pageable) {
+        Specification<Customer> spec = (root, query, cb) -> {
+            var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+
+            if (firstName != null && !firstName.isEmpty()) {
+                predicates.add(cb.like(root.get("firstName"), "%" + firstName + "%"));
+            }
+            if (lastName != null && !lastName.isEmpty()) {
+                predicates.add(cb.like(root.get("lastName"), "%" + lastName + "%"));
+            }
+            if (email != null && !email.isEmpty()) {
+                predicates.add(cb.like(root.get("email"), "%" + email + "%"));
+            }
+
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+
+        return repository.findAll(spec, pageable)
+                .map(this::mapToDto);
+    }
+
+    @Override
+    @CacheEvict(value = {"customers", "allCustomers"}, allEntries = true)
     public CustomerDto update(Long id, CustomerDto dto) {
         Customer customer = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Customer not found"));
+                .orElseThrow(() -> new CustomerNotFoundException(id));
 
         customer.setFirstName(dto.getFirstName());
         customer.setLastName(dto.getLastName());
@@ -69,6 +100,7 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
+    @CacheEvict(value = {"customers", "allCustomers"}, allEntries = true)
     public void delete(Long id) {
         repository.deleteById(id);
     }
